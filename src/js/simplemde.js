@@ -6,27 +6,65 @@ require("./codemirror/tablist");
 require("codemirror/addon/display/fullscreen.js");
 require("codemirror/mode/markdown/markdown.js");
 require("codemirror/addon/mode/overlay.js");
+require("codemirror/addon/display/placeholder.js");
 require("codemirror/mode/gfm/gfm.js");
 require("codemirror/mode/xml/xml.js");
-require("spell-checker");
 var marked = require("marked");
 
 
 // Some variables
 var isMac = /Mac/.test(navigator.platform);
 
+// Mapping of actions that can be bound to keyboard shortcuts or toolbar buttons
+var bindings = {
+	"toggleBold": toggleBold,
+	"toggleItalic": toggleItalic,
+	"drawLink": drawLink,
+	"toggleHeadingSmaller": toggleHeadingSmaller,
+	"toggleHeadingBigger": toggleHeadingBigger,
+	"drawImage": drawImage,
+	"toggleBlockquote": toggleBlockquote,
+	"toggleOrderedList": toggleOrderedList,
+	"toggleUnorderedList": toggleUnorderedList,
+	"toggleCodeBlock": toggleCodeBlock,
+	"togglePreview": togglePreview,
+	"toggleStrikethrough": toggleStrikethrough,
+	"toggleHeading1": toggleHeading1,
+	"toggleHeading2": toggleHeading2,
+	"toggleHeading3": toggleHeading3,
+	"cleanBlock": cleanBlock,
+	"drawTable": drawTable,
+	"drawHorizontalRule": drawHorizontalRule,
+	"undo": undo,
+	"redo": redo,
+	"toggleSideBySide": toggleSideBySide,
+	"toggleFullScreen": toggleFullScreen
+};
+
 var shortcuts = {
-	"Cmd-B": toggleBold,
-	"Cmd-I": toggleItalic,
-	"Cmd-K": drawLink,
-	"Cmd-H": toggleHeadingSmaller,
-	"Shift-Cmd-H": toggleHeadingBigger,
-	"Cmd-Alt-I": drawImage,
-	"Cmd-'": toggleBlockquote,
-	"Cmd-Alt-L": toggleOrderedList,
-	"Cmd-L": toggleUnorderedList,
-	"Cmd-Alt-C": toggleCodeBlock,
-	"Cmd-P": togglePreview
+	"toggleBold": "Cmd-B",
+	"toggleItalic": "Cmd-I",
+	"drawLink": "Cmd-K",
+	"toggleHeadingSmaller": "Cmd-H",
+	"toggleHeadingBigger": "Shift-Cmd-H",
+	"cleanBlock": "Cmd-E",
+	"drawImage": "Cmd-Alt-I",
+	"toggleBlockquote": "Cmd-'",
+	"toggleOrderedList": "Cmd-Alt-L",
+	"toggleUnorderedList": "Cmd-L",
+	"toggleCodeBlock": "Cmd-Alt-C",
+	"togglePreview": "Cmd-P",
+	"toggleSideBySide": "F9",
+	"toggleFullScreen": "F11"
+};
+
+var getBindingName = function(f) {
+	for(var key in bindings) {
+		if(bindings[key] === f) {
+			return key;
+		}
+	}
+	return null;
 };
 
 var isMobile = function() {
@@ -54,13 +92,13 @@ function fixShortcut(name) {
 /**
  * Create icon element for toolbar.
  */
-function createIcon(options, enableTooltips) {
+function createIcon(options, enableTooltips, shortcuts) {
 	options = options || {};
 	var el = document.createElement("a");
 	enableTooltips = (enableTooltips == undefined) ? true : enableTooltips;
 
 	if(options.title && enableTooltips) {
-		el.title = options.title;
+		el.title = createTootlip(options.title, options.action, shortcuts);
 
 		if(isMac) {
 			el.title = el.title.replace("Ctrl", "⌘");
@@ -80,6 +118,19 @@ function createSep() {
 	return el;
 }
 
+function createTootlip(title, action, shortcuts) {
+	var actionName;
+	var tooltip = title;
+
+	if(action) {
+		actionName = getBindingName(action);
+		if(shortcuts[actionName]) {
+			tooltip += " (" + fixShortcut(shortcuts[actionName]) + ")";
+		}
+	}
+
+	return tooltip;
+}
 
 /**
  * The state of CodeMirror at the given position.
@@ -265,6 +316,14 @@ function toggleOrderedList(editor) {
 }
 
 /**
+ * Action for clean block (remove headline, list, blockquote code, markers)
+ */
+function cleanBlock(editor) {
+	var cm = editor.codemirror;
+	_cleanBlock(cm);
+}
+
+/**
  * Action for drawing a link.
  */
 function drawLink(editor) {
@@ -333,7 +392,7 @@ function toggleSideBySide(editor) {
 	var wrapper = cm.getWrapperElement();
 	var preview = wrapper.nextSibling;
 	var toolbarButton = editor.toolbarElements["side-by-side"];
-
+	var useSideBySideListener = false;
 	if(/editor-preview-active-side/.test(preview.className)) {
 		preview.className = preview.className.replace(
 			/\s*editor-preview-active-side\s*/g, ""
@@ -351,6 +410,7 @@ function toggleSideBySide(editor) {
 		}, 1);
 		toolbarButton.className += " active";
 		wrapper.className += " CodeMirror-sided";
+		useSideBySideListener = true;
 	}
 
 	// Hide normal preview if active
@@ -365,13 +425,20 @@ function toggleSideBySide(editor) {
 		toolbar_div.className = toolbar_div.className.replace(/\s*disabled-for-preview*/g, "");
 	}
 
-	// Start preview with the current text
-	preview.innerHTML = editor.options.previewRender(editor.value(), preview);
-
-	// Updates preview
-	cm.on("update", function() {
+	var sideBySideRenderingFunction = function() {
 		preview.innerHTML = editor.options.previewRender(editor.value(), preview);
-	});
+	};
+
+	if(!cm.sideBySideRenderingFunction) {
+		cm.sideBySideRenderingFunction = sideBySideRenderingFunction;
+	}
+
+	if(useSideBySideListener) {
+		preview.innerHTML = editor.options.previewRender(editor.value(), preview);
+		cm.on("update", cm.sideBySideRenderingFunction);
+	} else {
+		cm.off("update", cm.sideBySideRenderingFunction);
+	}
 }
 
 
@@ -620,6 +687,28 @@ function _toggleBlock(editor, type, start_chars, end_chars) {
 	cm.focus();
 }
 
+function _cleanBlock(cm) {
+	if(/editor-preview-active/.test(cm.getWrapperElement().lastChild.className))
+		return;
+
+	var startPoint = cm.getCursor("start");
+	var endPoint = cm.getCursor("end");
+	var text;
+
+	for(var line = startPoint.line; line <= endPoint.line; line++) {
+		text = cm.getLine(line);
+		text = text.replace(/^[ ]*([# ]+|\*|\-|[> ]+|[0-9]+(.|\)))[ ]*/, "");
+
+		cm.replaceRange(text, {
+			line: line,
+			ch: 0
+		}, {
+			line: line,
+			ch: 99999999999999
+		});
+	}
+}
+
 // Merge the properties of one object into another.
 function _mergeProperties(target, source) {
 	for(var property in source) {
@@ -671,14 +760,14 @@ var toolbarBuiltInButtons = {
 		name: "bold",
 		action: toggleBold,
 		className: "fa fa-bold",
-		title: "Bold (Ctrl+B)",
+		title: "Bold",
 		default: true
 	},
 	"italic": {
 		name: "italic",
 		action: toggleItalic,
 		className: "fa fa-italic",
-		title: "Italic (Ctrl+I)",
+		title: "Italic",
 		default: true
 	},
 	"strikethrough": {
@@ -691,20 +780,20 @@ var toolbarBuiltInButtons = {
 		name: "heading",
 		action: toggleHeadingSmaller,
 		className: "fa fa-header",
-		title: "Heading (Ctrl+H)",
+		title: "Heading",
 		default: true
 	},
 	"heading-smaller": {
 		name: "heading-smaller",
 		action: toggleHeadingSmaller,
 		className: "fa fa-header fa-header-x fa-header-smaller",
-		title: "Smaller Heading (Ctrl+H)"
+		title: "Smaller Heading"
 	},
 	"heading-bigger": {
 		name: "heading-bigger",
 		action: toggleHeadingBigger,
 		className: "fa fa-header fa-header-x fa-header-bigger",
-		title: "Bigger Heading (Shift+Ctrl+H)"
+		title: "Bigger Heading"
 	},
 	"heading-1": {
 		name: "heading-1",
@@ -731,28 +820,34 @@ var toolbarBuiltInButtons = {
 		name: "code",
 		action: toggleCodeBlock,
 		className: "fa fa-code",
-		title: "Code (Ctrl+Alt+C)"
+		title: "Code"
 	},
 	"quote": {
 		name: "quote",
 		action: toggleBlockquote,
 		className: "fa fa-quote-left",
-		title: "Quote (Ctrl+')",
+		title: "Quote",
 		default: true
 	},
 	"unordered-list": {
 		name: "unordered-list",
 		action: toggleUnorderedList,
 		className: "fa fa-list-ul",
-		title: "Generic List (Ctrl+L)",
+		title: "Generic List",
 		default: true
 	},
 	"ordered-list": {
 		name: "ordered-list",
 		action: toggleOrderedList,
 		className: "fa fa-list-ol",
-		title: "Numbered List (Ctrl+Alt+L)",
+		title: "Numbered List",
 		default: true
+	},
+	"clean-block": {
+		name: "clean-block",
+		action: cleanBlock,
+		className: "fa fa-eraser fa-clean-block",
+		title: "Clean block"
 	},
 	"separator-2": {
 		name: "separator-2"
@@ -761,14 +856,14 @@ var toolbarBuiltInButtons = {
 		name: "link",
 		action: drawLink,
 		className: "fa fa-link",
-		title: "Create Link (Ctrl+K)",
+		title: "Create Link",
 		default: true
 	},
 	"image": {
 		name: "image",
 		action: drawImage,
 		className: "fa fa-picture-o",
-		title: "Insert Image (Ctrl+Alt+I)",
+		title: "Insert Image",
 		default: true
 	},
 	"table": {
@@ -790,21 +885,21 @@ var toolbarBuiltInButtons = {
 		name: "preview",
 		action: togglePreview,
 		className: "fa fa-eye no-disable",
-		title: "Toggle Preview (Ctrl+P)",
+		title: "Toggle Preview",
 		default: true
 	},
 	"side-by-side": {
 		name: "side-by-side",
 		action: toggleSideBySide,
 		className: "fa fa-columns no-disable no-mobile",
-		title: "Toggle Side by Side (F9)",
+		title: "Toggle Side by Side",
 		default: true
 	},
 	"fullscreen": {
 		name: "fullscreen",
 		action: toggleFullScreen,
 		className: "fa fa-arrows-alt no-disable no-mobile",
-		title: "Toggle Fullscreen (F11)",
+		title: "Toggle Fullscreen",
 		default: true
 	},
 	"guide": {
@@ -813,13 +908,28 @@ var toolbarBuiltInButtons = {
 		className: "fa fa-question-circle",
 		title: "Markdown Guide",
 		default: true
+	},
+	"separator-4": {
+		name: "separator-4"
+	},
+	"undo": {
+		name: "undo",
+		action: undo,
+		className: "fa fa-undo no-disable",
+		title: "Undo"
+	},
+	"redo": {
+		name: "redo",
+		action: redo,
+		className: "fa fa-repeat no-disable",
+		title: "Redo"
 	}
 };
 
 var insertTexts = {
 	link: ["[", "](http://)"],
 	image: ["![](http://", ")"],
-	table: ["", "\n\n| Column 1 | Column 2 | Column 3 |\n| -------- | -------- | -------- |\n| Text     | Text      | Text     |\n\n"],
+	table: ["", "\n\n| Column 1 | Column 2 | Column 3 |\n| -------- | -------- | -------- |\n| Text     | Text     | Text     |\n\n"],
 	horizontalRule: ["", "\n\n-----\n\n"]
 };
 
@@ -925,6 +1035,10 @@ function SimpleMDE(options) {
 	options.blockStyles = extend({}, blockStyles, options.blockStyles || {});
 
 
+	// Merging the shortcuts, with the given options
+	options.shortcuts = extend({}, shortcuts, options.shortcuts || {});
+
+
 	// Change unique_id to uniqueId for backwards compatibility
 	if(options.autosave != undefined && options.autosave.unique_id != undefined && options.autosave.unique_id != "")
 		options.autosave.uniqueId = options.autosave.unique_id;
@@ -995,23 +1109,20 @@ SimpleMDE.prototype.render = function(el) {
 	var self = this;
 	var keyMaps = {};
 
-	for(var key in shortcuts) {
-		(function(key) {
-			keyMaps[fixShortcut(key)] = function() {
-				shortcuts[key](self);
-			};
-		})(key);
+	for(var key in options.shortcuts) {
+		// null stands for "do not bind this command"
+		if(options.shortcuts[key] !== null && bindings[key] !== null) {
+			(function(key) {
+				keyMaps[fixShortcut(options.shortcuts[key])] = function() {
+					bindings[key](self);
+				};
+			})(key);
+		}
 	}
 
 	keyMaps["Enter"] = "newlineAndIndentContinueMarkdownList";
 	keyMaps["Tab"] = "tabAndIndentMarkdownList";
 	keyMaps["Shift-Tab"] = "shiftTabAndUnindentMarkdownList";
-	keyMaps["F11"] = function() {
-		toggleFullScreen(self);
-	};
-	keyMaps["F9"] = function() {
-		toggleSideBySide(self);
-	};
 	keyMaps["Esc"] = function(cm) {
 		if(cm.getOption("fullScreen")) toggleFullScreen(self);
 	};
@@ -1025,16 +1136,9 @@ SimpleMDE.prototype.render = function(el) {
 	}, false);
 
 	var mode, backdrop;
-	if(options.spellChecker !== false) {
-		mode = "spell-checker";
-		backdrop = options.parsingConfig;
-		backdrop.name = "gfm";
-		backdrop.gitHubSpice = false;
-	} else {
-		mode = options.parsingConfig;
-		mode.name = "gfm";
-		mode.gitHubSpice = false;
-	}
+	mode = options.parsingConfig;
+	mode.name = "gfm";
+	mode.gitHubSpice = false;
 
 	this.codemirror = CodeMirror.fromTextArea(el, {
 		mode: mode,
@@ -1047,7 +1151,8 @@ SimpleMDE.prototype.render = function(el) {
 		autofocus: (options.autofocus === true) ? true : false,
 		extraKeys: keyMaps,
 		lineWrapping: (options.lineWrapping === false) ? false : true,
-		allowDropFileTypes: ["text/plain"]
+		allowDropFileTypes: ["text/plain"],
+		placeholder: options.placeholder || el.getAttribute("placeholder") || ""
 	});
 
 	if(options.toolbar !== false) {
@@ -1210,7 +1315,7 @@ SimpleMDE.prototype.createToolbar = function(items) {
 			if(item === "|") {
 				el = createSep();
 			} else {
-				el = createIcon(item, self.options.toolbarTips);
+				el = createIcon(item, self.options.toolbarTips, self.options.shortcuts);
 			}
 
 			// bind events, special for info
@@ -1271,6 +1376,11 @@ SimpleMDE.prototype.createStatusbar = function(status) {
 				cm.on("update", function() {
 					el.innerHTML = wordCount(cm.getValue());
 				});
+			} else if(name == "characters") {
+				el.innerHTML = "0";
+				cm.on("update", function() {
+					el.innerHTML = cm.getValue().length;
+				});
 			} else if(name === "lines") {
 				el.innerHTML = "0";
 				cm.on("update", function() {
@@ -1324,6 +1434,7 @@ SimpleMDE.toggleHeading3 = toggleHeading3;
 SimpleMDE.toggleCodeBlock = toggleCodeBlock;
 SimpleMDE.toggleUnorderedList = toggleUnorderedList;
 SimpleMDE.toggleOrderedList = toggleOrderedList;
+SimpleMDE.cleanBlock = cleanBlock;
 SimpleMDE.drawLink = drawLink;
 SimpleMDE.drawImage = drawImage;
 SimpleMDE.drawTable = drawTable;
@@ -1372,6 +1483,9 @@ SimpleMDE.prototype.toggleUnorderedList = function() {
 };
 SimpleMDE.prototype.toggleOrderedList = function() {
 	toggleOrderedList(this);
+};
+SimpleMDE.prototype.cleanBlock = function() {
+	cleanBlock(this);
 };
 SimpleMDE.prototype.drawLink = function() {
 	drawLink(this);
