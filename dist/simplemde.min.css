@@ -1,5 +1,5 @@
 /**
- * simplemde v1.9.1
+ * simplemde v2.0.0
  * Copyright Next Step Webs, Inc.
  * @link https://github.com/NextStepWebs/simplemde-markdown-editor
  * @license MIT
