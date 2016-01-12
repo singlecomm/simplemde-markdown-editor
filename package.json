@@ -1,6 +1,6 @@
 {
   "name": "simplemde",
-  "version": "1.11.2",
+  "version": "2.11.2",
   "description": "A simple, beautiful, and embeddable JavaScript Markdown editor. Features autosaving and spell checking.",
   "keywords": [
     "embeddable",
@@ -21,8 +21,7 @@
     "url": "https://github.com/NextStepWebs/simplemde-markdown-editor/issues"
   },
   "dependencies": {
-    "codemirror": "*",
-    "codemirror-spell-checker": "*",
+    "codemirror": "codemirror/CodeMirror",
     "marked": "*"
   },
   "devDependencies": {
