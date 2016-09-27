@@ -21,12 +21,11 @@
     "url": "https://github.com/NextStepWebs/simplemde-markdown-editor/issues"
   },
   "dependencies": {
-    "codemirror": "codemirror/CodeMirror",
+    "codemirror": "*",
     "marked": "*"
   },
   "devDependencies": {
     "browserify": "*",
-    "browserify-shim": "*",
     "debug": "*",
     "eslint": "*",
     "gulp": "*",
@@ -44,8 +43,5 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/NextStepWebs/simplemde-markdown-editor"
-  },
-  "browserify-shim": {
-    "codemirror": "global:CodeMirror"
   }
 }

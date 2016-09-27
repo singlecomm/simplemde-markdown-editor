@@ -1,6 +1,7 @@
 /*global require,module*/
 "use strict";
-var CodeMirror = require("codemirror");
+require("codemirror/mode/javascript/javascript.js");
+
 require("codemirror/addon/edit/continuelist.js");
 require("./codemirror/tablist");
 require("codemirror/addon/display/fullscreen.js");
@@ -10,6 +11,8 @@ require("codemirror/addon/display/placeholder.js");
 require("codemirror/addon/selection/mark-selection.js");
 require("codemirror/mode/gfm/gfm.js");
 require("codemirror/mode/xml/xml.js");
+
+var CodeMirror = require("codemirror");
 var marked = require("marked");
 
 
