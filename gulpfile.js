@@ -1,6 +1,7 @@
 "use strict";
+
 var gulp = require("gulp"),
-	minifycss = require("gulp-minify-css"),
+	minifycss = require("gulp-clean-css"),
 	uglify = require("gulp-uglify"),
 	concat = require("gulp-concat"),
 	header = require("gulp-header"),
@@ -8,11 +9,10 @@ var gulp = require("gulp"),
 	pkg = require("./package.json"),
 	debug = require("gulp-debug"),
 	eslint = require("gulp-eslint"),
-	prettify = require("gulp-jsbeautifier");
-var browserify = require("browserify");
-var source = require("vinyl-source-stream");
-var rename = require("gulp-rename");
-
+	prettify = require("gulp-jsbeautifier"),
+	browserify = require("browserify"),
+	source = require("vinyl-source-stream"),
+	rename = require("gulp-rename");
 
 var banner = ["/**",
 	" * <%= pkg.name %> v<%= pkg.version %>",
@@ -24,10 +24,10 @@ var banner = ["/**",
 
 gulp.task("prettify-js", [], function() {
 	return gulp.src("./src/js/simplemde.js")
-		.pipe(prettify({js: {braceStyle: "collapse", indentChar: "\t", indentSize: 1, maxPreserveNewlines: 3, spaceBeforeConditional: false}}))
+		.pipe(prettify({js: {brace_style: "collapse", indent_char: "\t", indent_size: 1, max_preserve_newlines: 3, space_before_conditional: false}}))
 		.pipe(gulp.dest("./src/js"));
 });
- 
+
 gulp.task("prettify-css", [], function() {
 	return gulp.src("./src/css/simplemde.css")
 		.pipe(prettify({css: {indentChar: "\t", indentSize: 1}}))
@@ -45,10 +45,9 @@ gulp.task("lint", ["prettify-js"], function() {
 function taskBrowserify(opts) {
 	return browserify("./src/js/simplemde.js", opts)
 		.bundle();
-
 }
 
-gulp.task("browserify:dev", ["lint"], function() {
+gulp.task("browserify:debug", ["lint"], function() {
 	return taskBrowserify({debug:true, standalone:"SimpleMDE"})
 		.pipe(source("simplemde.debug.js"))
 		.pipe(buffer())
@@ -56,7 +55,7 @@ gulp.task("browserify:dev", ["lint"], function() {
 		.pipe(gulp.dest("./debug/"));
 });
 
-gulp.task("browserify:min", ["lint"], function() {
+gulp.task("browserify", ["lint"], function() {
 	return taskBrowserify({standalone:"SimpleMDE"})
 		.pipe(source("simplemde.js"))
 		.pipe(buffer())
@@ -64,9 +63,9 @@ gulp.task("browserify:min", ["lint"], function() {
 		.pipe(gulp.dest("./debug/"));
 });
 
-gulp.task("scripts", ["browserify:dev", "browserify:min", "lint"], function() {
+gulp.task("scripts", ["browserify:debug", "browserify", "lint"], function() {
 	var js_files = ["./debug/simplemde.js"];
-	
+
 	return gulp.src(js_files)
 		.pipe(concat("simplemde.min.js"))
 		.pipe(uglify())
@@ -81,7 +80,7 @@ gulp.task("styles", ["prettify-css"], function() {
 		"./src/css/*.css",
 		"./node_modules/codemirror-spell-checker/src/css/spell-checker.css"
 	];
-	
+
 	return gulp.src(css_files)
 		.pipe(concat("simplemde.css"))
 		.pipe(buffer())

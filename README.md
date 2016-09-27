@@ -1,9 +1,9 @@
 # SimpleMDE - Markdown Editor
 A drop-in JavaScript textarea replacement for writing beautiful and understandable Markdown. The WYSIWYG-esque editor allows users who may be less experienced with Markdown to use familiar toolbar buttons and shortcuts. In addition, the syntax is rendered while editing to clearly show the expected result. Headings are larger, emphasized words are italicized, links are underlined, etc. SimpleMDE is one of the first editors to feature both built-in autosaving and spell checking.
 
-[**Demo**](http://nextstepwebs.github.io/simplemde-markdown-editor)
+[**Demo**](https://simplemde.com)
 
-[![Preview](http://i.imgur.com/zqWfJwO.png)](http://nextstepwebs.github.io/simplemde-markdown-editor)
+[![Preview](http://i.imgur.com/zqWfJwO.png)](https://simplemde.com)
 
 ## Why not a WYSIWYG editor or pure Markdown?
 WYSIWYG editors that produce HTML are often complex and buggy. Markdown solves this problem in many ways, plus Markdown can be rendered natively on more platforms than HTML. However, Markdown is not a syntax that an average user will be familiar with, nor is it visually clear while editing. In otherwords, for an unfamiliar user, the syntax they write will make little sense until they click the preview button. SimpleMDE has been designed to bridge this gap for non-technical users who are less familiar with or just learning Markdown syntax.
@@ -20,11 +20,11 @@ Via [bower](https://www.bower.io).
 bower install simplemde --save
 ```
 
-Via [jsDelivr](http://www.jsdelivr.com/#!simplemde). *Please note, jsDelivr may take a few days to update to the latest release.*
+Via [jsDelivr](https://www.jsdelivr.com/#!simplemde). *Please note, jsDelivr may take a few days to update to the latest release.*
 
 ```HTML
-<link rel="stylesheet" href="//cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
-<script src="//cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
+<script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
 ```
 
 ## Quick start
@@ -75,8 +75,10 @@ simplemde.value("This text will appear in the editor");
   - **uniqueId**: You must set a unique string identifier so that SimpleMDE can autosave. Something that separates this from other instances of SimpleMDE elsewhere on your website.
 - **blockStyles**: Customize how certain buttons that style blocks of text behave.
   - **bold** Can be set to `**` or `__`. Defaults to `**`.
+  - **code** Can be set to  ```` ``` ```` or `~~~`.  Defaults to ```` ``` ````.
   - **italic** Can be set to `*` or `_`. Defaults to `*`.
 - **element**: The DOM element for the textarea to use. Defaults to the first textarea on the page.
+- **forceSync**: If set to `true`, force text changes made in SimpleMDE to be immediately stored in original textarea. Defaults to `false`.
 - **hideIcons**: An array of icon names to hide. Can be used to hide specific icons shown by default without completely customizing the toolbar.
 - **indentWithTabs**: If set to `false`, indent using spaces instead of tabs. Defaults to `true`.
 - **initialValue**: If set, will customize the initial value of the editor.
@@ -92,14 +94,16 @@ simplemde.value("This text will appear in the editor");
   - **underscoresBreakWords**: If set to `true`, let underscores be a delimiter for separating words. Defaults to `false`.
 - **placeholder**: Custom placeholder that should be displayed
 - **previewRender**: Custom function for parsing the plaintext Markdown and returning HTML. Used when user previews.
+- **promptURLs**: If set to `true`, a JS alert window appears asking for the link or image URL. Defaults to `false`.
 - **renderingConfig**: Adjust settings for parsing the Markdown during previewing (not editing).
   - **singleLineBreaks**: If set to `false`, disable parsing GFM single line breaks. Defaults to `true`.
   - **codeSyntaxHighlighting**: If set to `true`, will highlight using [highlight.js](https://github.com/isagalaev/highlight.js). Defaults to `false`. To use this feature you must include highlight.js on your page. For example, include the script and the CSS files like:<br>`<script src="https://cdn.jsdelivr.net/highlight.js/latest/highlight.min.js"></script>`<br>`<link rel="stylesheet" href="https://cdn.jsdelivr.net/highlight.js/latest/styles/github.min.css">`
 - **shortcuts**: Keyboard shortcuts associated with this instance. Defaults to the [array of shortcuts](#keyboard-shortcuts).
 - **showIcons**: An array of icon names to show. Can be used to show specific icons hidden by default without completely customizing the toolbar.
 - **spellChecker**: If set to `false`, disable the spell checker. Defaults to `true`.
-- **status**: If set to `false`, hide the status bar. Defaults to `true`.
-  - Optionally, you can set an array of status bar elements to include, and in what order.
+- **status**: If set to `false`, hide the status bar. Defaults to the array of built-in status bar items.
+  - Optionally, you can set an array of status bar items to include, and in what order. You can even define your own custom status bar items.
+- **styleSelectedText**: If set to `false`, remove the `CodeMirror-selectedtext` class from selected lines. Defaults to `true`.
 - **tabSize**: If set, customize the tab size. Defaults to `2`.
 - **toolbar**: If set to `false`, hide the toolbar. Defaults to the [array of icons](#toolbar-icons).
 - **toolbarTips**: If set to `false`, disable toolbar button tips. Defaults to `true`.
@@ -118,6 +122,7 @@ var simplemde = new SimpleMDE({
 		italic: "_"
 	},
 	element: document.getElementById("MyID"),
+	forceSync: true,
 	hideIcons: ["guide", "heading"],
 	indentWithTabs: false,
 	initialValue: "Hello world!",
@@ -144,6 +149,7 @@ var simplemde = new SimpleMDE({
 
 		return "Loading...";
 	},
+	promptURLs: true,
 	renderingConfig: {
 		singleLineBreaks: false,
 		codeSyntaxHighlighting: true,
@@ -155,6 +161,17 @@ var simplemde = new SimpleMDE({
 	spellChecker: false,
 	status: false,
 	status: ["autosave", "lines", "words", "cursor"], // Optional usage
+	status: ["autosave", "lines", "words", "cursor", {
+		className: "keystrokes",
+		defaultValue: function(el) {
+			this.keystrokes = 0;
+			el.innerHTML = "0 Keystrokes";
+		},
+		onUpdate: function(el) {
+			el.innerHTML = ++this.keystrokes + " Keystrokes";
+		}
+	}], // Another optional usage, with a custom status bar item that counts keystrokes
+	styleSelectedText: false,
 	tabSize: 4,
 	toolbar: false,
 	toolbarTips: false,
@@ -163,7 +180,7 @@ var simplemde = new SimpleMDE({
 
 #### Toolbar icons
 
-Below are the built-in toolbar icons (only some of which are enabled by default), which can be reorganized however you like. "Name" is the name of the icon, referenced in the JS. "Action" is either a function or a URL to open. "Class" is the class given to the icon. "Tooltip" is the small tooltip that appears via the `title=""` attribute. Note that shortcut hints are added automatically and reflect the specified "action" if it has a keybind assigned to it (ie. with the value of "action" set to `bold` and that of "tootip" set to "Bold", the final text the user will see - assuming the default shortcuts are unchanged - would be "Bold (Ctrl-B)").
+Below are the built-in toolbar icons (only some of which are enabled by default), which can be reorganized however you like. "Name" is the name of the icon, referenced in the JS. "Action" is either a function or a URL to open. "Class" is the class given to the icon. "Tooltip" is the small tooltip that appears via the `title=""` attribute. Note that shortcut hints are added automatically and reflect the specified action if it has a keybind assigned to it (i.e. with the value of `action` set to `bold` and that of `tooltip` set to `Bold`, the final text the user will see would be "Bold (Ctrl-B)").
 
 Additionally, you can add a separator between any icons by adding `"|"` to the toolbar array.
 
@@ -190,7 +207,7 @@ horizontal-rule | drawHorizontalRule | Insert Horizontal Line<br>fa fa-minus
 preview | togglePreview | Toggle Preview<br>fa fa-eye no-disable
 side-by-side | toggleSideBySide | Toggle Side by Side<br>fa fa-columns no-disable no-mobile
 fullscreen | toggleFullScreen | Toggle Fullscreen<br>fa fa-arrows-alt no-disable no-mobile
-guide | [This link](http://nextstepwebs.github.io/simplemde-markdown-editor/markdown-guide) | Markdown Guide<br>fa fa-question-circle
+guide | [This link](https://simplemde.com/markdown-guide) | Markdown Guide<br>fa fa-question-circle
 
 Customize the toolbar using the `toolbar` option like:
 
@@ -210,7 +227,7 @@ var simplemde = new SimpleMDE({
 		},
 		{
 			name: "custom",
-			action: customFunction(editor){
+			action: function customFunction(editor){
 				// Add your own code
 			},
 			className: "fa fa-star",
@@ -255,7 +272,7 @@ var simplemde = new SimpleMDE({
 });
 ```
 
-Shortcuts are automatically converted between platforms. If you define a shortcut as "Cmd-B", on PC that shortcut will be changed to "Ctrl-B". Conversely, a shortcut defined as "Ctrl-I" will become "Cmd-I" in a browser of a Mac user.
+Shortcuts are automatically converted between platforms. If you define a shortcut as "Cmd-B", on PC that shortcut will be changed to "Ctrl-B". Conversely, a shortcut defined as "Ctrl-B" will become "Cmd-B" for Mac users.
 
 The list of actions that can be bound is the same as the list of built-in actions available for [toolbar buttons](#toolbar-icons).
 
@@ -287,6 +304,16 @@ simplemde.codemirror.on("change", function(){
 });
 ```
 
+## Removing SimpleMDE from textarea
+You can revert to the initial textarea by calling the `toTextArea` method. Note that this clears up the autosave (if enabled) associated with it. The textarea will retain any text from the destroyed SimpleMDE instance.
+
+```JavaScript
+var simplemde = new SimpleMDE();
+...
+simplemde.toTextArea();
+simplemde = null;
+```
+
 ## Useful methods
 The following self-explanatory methods may be of use while developing with SimpleMDE.
 
@@ -299,25 +326,6 @@ simplemde.clearAutosavedValue(); // no returned value
 ```
 
 ## How it works
-SimpleMDE is an improvement of [lepture's Editor project](https://github.com/lepture/editor) and includes a great many number of changes. It is bundled with [CodeMirror](https://github.com/codemirror/codemirror) and depends on [Font Awesome](http://fortawesome.github.io/Font-Awesome/).
+SimpleMDE began as an improvement of [lepture's Editor project](https://github.com/lepture/editor), but has now taken on an identity of its own. It is bundled with [CodeMirror](https://github.com/codemirror/codemirror) and depends on [Font Awesome](http://fontawesome.io).
 
 CodeMirror is the backbone of the project and parses much of the Markdown syntax as it's being written. This allows us to add styles to the Markdown that's being written. Additionally, a toolbar and status bar have been added to the top and bottom, respectively. Previews are rendered by [Marked](https://github.com/chjj/marked) using GFM.
-
-## What's changed?
-As mentioned earlier, SimpleMDE is an improvement of [lepture's Editor project](https://github.com/lepture/editor). So you might be wondering, what's changed? Quite a bit actually. Here's some notable changes:
-
-- Upgraded from CodeMirror 3 to CodeMirror 5
-- Many changes to the style, appearance, and user friendliness
-- Interface more closely resembles Bootstrap
-- Now mobile friendly
-- Option to autosave the text as you type
-- Now spell checks what you write
-- The text editor now automatically grows as you type more
-- Fixed a large amount of bugs
-- Switched to Font Awesome icons
-- Improved preview rendering in many ways
-- Improved as-you-type appearance of headers and code blocks
-- Simplified the toolbar
-- Many new options during instantiation
-- New icons and tooltips
-- Additional keyboard shortcuts
